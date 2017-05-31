@@ -13,7 +13,7 @@ pip install terrafile
 ## Usage
 
 ```shell
-terrafile [path]
+pterrafile [path]
 ```
 
 If `path` is provided, it must be the path to a `Terrafile` file, or a directory containing one. If not provided, it looks for the file in the current working directory.

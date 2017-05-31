@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name='terrafile',
-    version='0.1',
+    version='0.2',
     description='Manages external Terraform modules.',
     author='Raymond Butcher',
     author_email='ray.butcher@claranet.uk',
@@ -14,7 +14,7 @@ setup(
         'terrafile',
     ),
     scripts=(
-        'bin/terrafile',
+        'bin/pterrafile',
     ),
     install_requires=(
         'pyyaml',
