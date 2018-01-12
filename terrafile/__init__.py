@@ -1,23 +1,36 @@
-import errno
 import os
+import re
+import requests
 import shutil
 import subprocess
 import sys
 import yaml
-import requests
-import re
 
 
-REGISTRY_BASE_URL = 'https://registry.terraform.io/v1/modules/'
+REGISTRY_BASE_URL = 'https://registry.terraform.io/v1/modules'
+GITHUB_DOWNLOAD_URL_RE = re.compile('https://[^/]+/repos/([^/]+)/([^/]+)/tarball/([^/]+)/.*')
 
-def get_source_from_registry(module_name):
-    response = requests.get('{}{}'.format(REGISTRY_BASE_URL, module_name))
-    data = response.json()
-    if 'errors' not in data.keys():
-        return data['source']
-    else:
-        sys.stderr.write('Error looking up module in Terraform Registry: {}\n'.format(data['errors']))
-        sys.exit(1)
+
+def get_source_from_registry(source, version):
+    namespace, name, provider = source.split('/')
+    registry_download_url = '{base_url}/{namespace}/{name}/{provider}/{version}/download'.format(
+        base_url=REGISTRY_BASE_URL,
+        namespace=namespace,
+        name=name,
+        provider=provider,
+        version=version,
+    )
+    response = requests.get(registry_download_url)
+    if response.status_code == 204:
+        github_download_url = response.headers.get('X-Terraform-Get') or ''
+        match = GITHUB_DOWNLOAD_URL_RE.match(github_download_url)
+        if match:
+            user, repo, version = match.groups()
+            source = 'https://github.com/{}/{}.git'.format(user, repo)
+            return source, version
+    sys.stderr.write('Error looking up module in Terraform Registry: {}\n'.format(response.content))
+    sys.exit(1)
+
 
 def run(*args, **kwargs):
     proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, **kwargs)
@@ -76,27 +89,31 @@ def update_modules(path):
 
     for name, repository_details in sorted(terrafile.items()):
         target = os.path.join(module_path, name)
-        raw_source = repository_details['source']
-        if is_valid_registry_source(raw_source):
-            source = get_source_from_registry(raw_source)
-        elif os.path.isdir(raw_source):
-            source = os.path.abspath(raw_source)
+        source = repository_details['source']
+
+        # Support modules on the local filesystem.
+        if source.startswith('./') or source.startswith('../') or source.startswith('/'):
+            print('Copying {}/{}'.format(module_path_name, name))
+            # Paths must be relative to the Terrafile directory.
+            source = os.path.join(module_path, source)
             shutil.rmtree(target, ignore_errors=True)
-            print('Fetching {}/{}'.format(module_path_name, name))
             shutil.copytree(source, target)
             continue
-        else:
-            source = raw_source
+
         version = repository_details['version']
+
+        # Support Terraform Registry sources.
+        if is_valid_registry_source(source):
+            print('Checking {}/{}'.format(module_path_name, name))
+            source, version = get_source_from_registry(source, version)
 
         # Skip this module if it has already been checked out.
         if has_git_tag(path=target, tag=version):
             print('Fetched {}/{}'.format(module_path_name, name))
             continue
 
-        print('Fetching {}/{}'.format(module_path_name, name))
-
         # Delete the old directory and clone it from scratch.
+        print('Fetching {}/{}'.format(module_path_name, name))
         shutil.rmtree(target, ignore_errors=True)
         output, returncode = run('git', 'clone', '--branch={}'.format(version), source, target)
         if returncode != 0:
