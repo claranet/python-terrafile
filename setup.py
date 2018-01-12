@@ -18,5 +18,6 @@ setup(
     ),
     install_requires=(
         'pyyaml',
+        'requests',
     ),
 )
