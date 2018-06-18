@@ -117,5 +117,5 @@ def update_modules(path):
         shutil.rmtree(target, ignore_errors=True)
         output, returncode = run('git', 'clone', '--branch={}'.format(version), source, target)
         if returncode != 0:
-            sys.stderr.write(output)
+            sys.stderr.write(bytes.decode(output))
             sys.exit(returncode)
