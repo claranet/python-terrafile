@@ -66,7 +66,7 @@ def has_git_tag(path, tag):
     if os.path.isdir(path):
         output, returncode = run('git', 'tag', '--points-at=HEAD', cwd=path)
         if returncode == 0:
-            tags.update(output.split())
+            tags.update([t.decode('utf-8') for t in output.split()])
     return tag in tags
 
 
