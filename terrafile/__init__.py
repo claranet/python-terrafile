@@ -118,6 +118,8 @@ def update_modules(path):
             source, version = get_source_from_registry(source, version)
 
         # Skip this module if it has already been checked out.
+        # This won't skip branches, because they may have changes
+        # that need to be pulled.
         if has_git_tag(path=target, tag=version):
             print('Fetched {}/{}'.format(module_path_name, name))
             continue
