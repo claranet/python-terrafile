@@ -32,6 +32,16 @@ def get_source_from_registry(source, version):
     sys.exit(1)
 
 
+def add_github_token(github_download_url,token):
+    github_repo_url_pattern = re.compile('.*github.com/(.*)/(.*)\.git')
+    match = github_repo_url_pattern.match(github_download_url)
+    url = github_download_url
+    if match:
+        user, repo = match.groups()
+        url = 'https://{}@github.com/{}/{}.git'.format(token, user, repo)
+    return url
+
+
 def run(*args, **kwargs):
     proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, **kwargs)
     stdout, stderr = proc.communicate()
@@ -112,6 +122,9 @@ def update_modules(path):
             print('Fetched {}/{}'.format(module_path_name, name))
             continue
 
+        # add token to tthe source url if exists
+        if 'GITHUB_TOKEN' in os.environ:
+            source = add_github_token(source, os.getenv('GITHUB_TOKEN'))
         # Delete the old directory and clone it from scratch.
         print('Fetching {}/{}'.format(module_path_name, name))
         shutil.rmtree(target, ignore_errors=True)
