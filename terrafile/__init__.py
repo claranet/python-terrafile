@@ -58,7 +58,7 @@ def get_terrafile_path(path):
 def read_terrafile(path):
     try:
         with open(path) as open_file:
-            terrafile = yaml.load(open_file)
+            terrafile = yaml.safe_load(open_file)
         if not terrafile:
             raise ValueError('{} is empty'.format(path))
     except IOError as error:
